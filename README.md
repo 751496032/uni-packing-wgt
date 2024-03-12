@@ -34,7 +34,7 @@ npm i uni-packing-wgt
 其中`development`、`beta`、`production`是vite多环境配置的文件名。
 
 
-打包命令`build-wgt`, 在初次执行命令时，会在项目根目录创建三个配置文件，可根据需求配置，如下：
+打包命令`build-wgt`在初次执行命令时，会在项目根目录创建三个配置文件，可根据需求配置：
 
 - config.json
 - config-output.json
