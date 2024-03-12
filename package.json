@@ -1,0 +1,30 @@
+{
+  "name": "uni-packing-wgt",
+  "version": "1.0.0",
+  "description": "uni packing wgt",
+  "main": "index.js",
+  "scripts": {
+    "test": "./index.js"
+  },
+  "bin": {
+    "build-wgt": "./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/751496032/uni-packing-wgt.git"
+  },
+  "keywords": [
+    "uniapp",
+    "wgt"
+  ],
+  "author": "HZWei",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/751496032/uni-packing-wgt/issues"
+  },
+  "homepage": "https://github.com/751496032/uni-packing-wgt#readme",
+  "dependencies": {
+    "compressing": "^1.10.0",
+    "qiniu": "^7.11.0"
+  }
+}
