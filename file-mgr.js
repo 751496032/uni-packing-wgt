@@ -52,6 +52,8 @@ const configReleaseFilePath = dir + 'config-release.json'
 
 const manifestPath =`${rootDir}/src/manifest.json`
 
+const manifestTsPath = `${rootDir}/manifest.config.ts`
+
 
 const configs = new Map()
 configs.set(configFilePath, config)
@@ -91,6 +93,6 @@ function initConfig() {
 }
 
 module.exports = {
-     initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath,
+     initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath, manifestTsPath
 }
 

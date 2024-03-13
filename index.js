@@ -4,7 +4,7 @@ const path = require('path')
 const execSync = require('child_process').execSync
 const compressing = require('compressing');
 
-const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath,manifestPath} = require("./file-mgr")
+const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath,manifestPath,manifestTsPath} = require("./file-mgr")
 if (initConfig()) return ;
 
 const manifest = require(manifestPath)
@@ -29,29 +29,43 @@ if (commands.length === 0){
     console.error("no command")
     return
 }
-if (config.runRelease && fs.existsSync(configReleaseFilePath)) {
-    const releaseConfig = require(configReleaseFilePath)
-    let code = releaseConfig.versionCode
-    let name = releaseConfig.versionName
+// if (config.runRelease && fs.existsSync(configReleaseFilePath)) {
+//     const releaseConfig = require(configReleaseFilePath)
+//     let code = releaseConfig.versionCode
+//     let name = releaseConfig.versionName
     // if (config.isIncrementVersion){
     //     code += 1
     //     name = incrementVersion(name)
     //     releaseConfig.versionCode = code
     //     releaseConfig.versionName = name
     // }
-    changeVersion(code, name)
-} else {
-    if (config.isIncrementVersion) {
-        let code = manifest.versionCode + 1
-        let name = incrementVersion(manifest.versionName)
-        changeVersion(code, name)
+//     changeVersion(code, name)
+// } else {
+if (config.isIncrementVersion) {
+    let code = 0
+    if (manifest.versionCode instanceof Number) {
+        code = manifest.versionCode + 1;
+    } else {
+        code = parseInt(manifest.versionCode) + 1;
     }
-
+    let name = incrementVersion(manifest.versionName)
+    console.log("code: " + code, "name: " + name)
+    changeVersion(code, name)
 }
+
+// }
 
 function changeVersion(code, name) {
     // 更新版本号
-    manifest.versionCode = code
+    if (fs.existsSync(manifestTsPath)){
+        let filePath = manifestTsPath
+        const data = fs.readFileSync(filePath, "utf8")
+        const modifiedData = data.replace(/versionName: '(.+?)'/, `versionName: '${name}'`).replace(/versionCode: '(\d+)'/, `versionCode: '${code}'`);
+        fs.writeFileSync(filePath, modifiedData, "utf8")
+        return
+    }
+
+    manifest.versionCode = code.toString()
     manifest.versionName = name
     let replaceFiles = [{
         path: manifestPath,
