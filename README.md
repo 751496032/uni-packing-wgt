@@ -43,6 +43,7 @@ npm i uni-packing-wgt
 - config-output.json：配置文件拷贝的输入、输出目录，用于uni模块在dev环境与原生资源同步调试
 - config-release.json：发布环境的配置，比如cdn缓存、后台配置同步的管理
 
+> config-output.json和config-release.json文件记得在`.gitignore`配置忽略不用提交，每个开发者的参数是不一样的。
 
 **config.json**
 
