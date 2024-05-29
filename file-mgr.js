@@ -21,8 +21,8 @@ const config = `{
 }`
 
 const configOutput = `{
-    "sourceDir": "",
-    "targetDir": "",
+    "sourceDir": "./dist/dev/app",
+    "targetDir": "替换成项目路径/app/src/main/assets/apps/替换成uniAppId/www",
 }`
 
 const configRelease = `{
