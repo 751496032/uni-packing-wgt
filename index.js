@@ -113,9 +113,11 @@ Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
         if (config.pkgCopyToNativeDir && fs.existsSync(configOutputFilePath)) {
             console.log("======资源包开始复制=====")
             const output = require(configOutputFilePath)
-            if (!!output.sourceDir && fs.existsSync(output.sourceDir)){
+            if (output.sourceDir && output.targetDir && output.sourceDir.length > 0 && output.targetDir.length > 0 && fs.existsSync(output.sourceDir)) {
                 copyDirectory.copy(output.sourceDir, output.targetDir)
                 console.log("======资源包复制任务完成=====")
+            }else {
+                console.log("======检查输出输入路径是否配置=====")
             }
         }
     }).catch((error) => {

@@ -43,7 +43,7 @@ const configRelease = `{
     "account": {
       "username": "",
       "password": ""
-    }
+    },
     "token": ""
   },
   "configs": {

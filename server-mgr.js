@@ -236,7 +236,7 @@ async function updateConfig(params = {
         if (api.configs.android){
             item.android = {
                 version: version,
-                code: code,
+                code: Number.parseInt(code),
                 updateDesc: api.configs.updateDesc,
                 url: url
             }
@@ -244,7 +244,7 @@ async function updateConfig(params = {
         if (api.configs.ios){
             item.ios = {
                 version: version,
-                code: code,
+                code: Number.parseInt(code),
                 updateDesc: api.configs.updateDesc,
                 url: url
             }
@@ -258,7 +258,7 @@ async function updateConfig(params = {
         }
         newItem.android = {
             version: version,
-            code: code,
+            code: Number.parseInt(code),
             updateDesc: api.configs.updateDesc,
             url: url
         }
