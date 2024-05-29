@@ -3,7 +3,7 @@
 由于官方的HBuilderX编译器打包wgt每次都要手动的操作有些繁琐，也不支持多环境打包，在开发阶段与原生项目交互调试是极其不方便。
 而`uni-packing-wgt`正好可以解决这些问题。
 
-`uni-packing-wgt`是uniapp跨平台多环境资源打包、调试、发布的命令行工具。
+`uni-packing-wgt`是uniapp跨平台多环境资源打包、调试、发布的脚本工具。
 
 
 主要特性：
@@ -23,7 +23,7 @@
 npm i uni-packing-wgt
 ```
 
-在使用打包命令`build-wgt`之前，必须先在`package.json`中配置uniapp的打包命令，如下：
+1、在`package.json`中配置uniapp的打包命令，如下：
 
 ```json
 "build:app-plus-dev": "uni build -p app-plus --mode development --outDir=./dist/dev/app",
@@ -31,15 +31,19 @@ npm i uni-packing-wgt
 "build:app-plus-release": "uni build -p app-plus --mode production --outDir=./dist/release/app"
 ```
 
-其中`development`、`beta`、`production`是vite多环境配置的文件名。
+其中`development`、`beta`、`production`是vite多环境配置的文件名，vite必须遵守这种命名规范，不然脚本会执行失败。
 
+2、执行`build-wgt`命令生成wgt包
 
-打包命令`build-wgt`在初次执行时，会在项目根目录创建三个配置文件，可根据需求自由配置：
+> 如果是在vscode运行命令，记得加上`npx`, webstore则不用。
 
-- config.json
-- config-output.json
-- config-release.json
+在初次执行命令时，会在项目根目录创建三个配置文件，可根据需求自由配置：
 
+- config.json：常规配置，比如运行环境、版本管理、文件拷贝、上传等管理
+- config-output.json：配置文件拷贝的输入、输出目录，用于uni模块在dev环境与原生资源同步调试
+- config-release.json：发布环境的配置，比如cdn缓存、后台配置同步的管理
+
+> config-output.json和config-release.json文件记得在`.gitignore`配置忽略不用提交，每个开发者的参数是不一样的。
 
 **config.json**
 
@@ -62,7 +66,7 @@ npm i uni-packing-wgt
 }
 ```
 
-以dev环境为例，结果：
+以dev环境为例，控制台输出结果：
 
 ``` bash
 hzwei@HZWeis-Mac-mini uni-mall-staff % build-wgt
