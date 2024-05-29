@@ -1,6 +1,8 @@
 const fs = require("fs")
 const path  = require("path")
 
+const { configOutputFilePath} = require("./file-mgr")
+
 class CopyDirectory{
 
     copy(src, dest) {
@@ -8,6 +10,8 @@ class CopyDirectory{
             if (!fs.existsSync(dest)) {
                 fs.mkdirSync(dest, {recursive: true})
             }
+
+            const config = require(configOutputFilePath)
             const files = fs.readdirSync(src, {encoding: "utf-8", withFileTypes: true})
 
             files.forEach((item) => {

@@ -7,6 +7,9 @@ const config = `{
     "isIncrementVersion": true,
     "uploadWgtPackage": false,
     "pkgCopyToNativeDir": false,
+    "refreshUrl": true,
+    "enableRefreshHistory":false,
+    "enableServerLog": false,
     "upload": {
         "devAccessKey": "",
         "devSecretKey": "",
@@ -19,7 +22,7 @@ const config = `{
 
 const configOutput = `{
     "sourceDir": "",
-    "targetDir": ""
+    "targetDir": "",
 }`
 
 const configRelease = `{
@@ -31,14 +34,28 @@ const configRelease = `{
     "dir": "app"
   },
   "qiniu": {
-    "apiUrl": "",
+    "baseUrl": "",
     "api": {
-      "login": ""
+      "login": "",
+      "cdn_cache_refresh":"",
+      "refresh_history":"",
     },
     "account": {
       "username": "",
       "password": ""
     }
+    "token": ""
+  },
+  "configs": {
+    "key": "app_test",
+    "updateAndroid": true, 
+    "updateIOS": true,
+    "updateDesc": "测试",
+    "account": {
+      "username": 0,
+      "password": 0
+    },
+    "token": ""
   },
   "versionName": "1.0.0",
   "versionCode": 1
@@ -50,7 +67,7 @@ const configFilePath = dir + 'config.json'
 const configOutputFilePath = dir + 'config-output.json'
 const configReleaseFilePath = dir + 'config-release.json'
 
-const manifestPath =`${rootDir}/src/manifest.json`
+const manifestPath = `${rootDir}/src/manifest.json`
 
 const manifestTsPath = `${rootDir}/manifest.config.ts`
 
@@ -61,8 +78,8 @@ configs.set(configOutputFilePath, configOutput)
 configs.set(configReleaseFilePath, configRelease)
 
 function createFile(filePath, data) {
-    if (!fs.existsSync(dir)){
-        fs.mkdirSync(dir,{ recursive: true })
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, {recursive: true})
     }
     fs.writeFileSync(filePath, data, {encoding: 'utf8'})
     if (!fs.existsSync(filePath)) {
@@ -73,7 +90,7 @@ function createFile(filePath, data) {
 
 function initConfig() {
     let initConfig = true
-    if (fs.existsSync(configFilePath)){
+    if (fs.existsSync(configFilePath)) {
         initConfig = false
         return initConfig
     }
@@ -82,7 +99,7 @@ function initConfig() {
         configs.forEach((value, key, map) => {
             createFile(key, value)
         })
-        if (initConfig){
+        if (initConfig) {
             console.log("配置文件初始化成功，请配置相关参数再次执行命令")
         }
         return initConfig
@@ -93,6 +110,6 @@ function initConfig() {
 }
 
 module.exports = {
-     initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath, manifestTsPath
+    initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath, manifestTsPath
 }
 

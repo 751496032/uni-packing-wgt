@@ -13,9 +13,6 @@ const config = require(configFilePath)
 const uploader = require("./upload-tools")
 const copyDirectory = require("./copy-directory")
 
-// let mf = fs.readFileSync('./src/manifest.json', {encoding: 'utf-8'});
-// const manifest = JSON.parse(removeComments(mf));
-
 const appid = manifest.appid
 
 
@@ -29,31 +26,23 @@ if (commands.length === 0){
     console.error("no command")
     return
 }
-// if (config.runRelease && fs.existsSync(configReleaseFilePath)) {
-//     const releaseConfig = require(configReleaseFilePath)
-//     let code = releaseConfig.versionCode
-//     let name = releaseConfig.versionName
-    // if (config.isIncrementVersion){
-    //     code += 1
-    //     name = incrementVersion(name)
-    //     releaseConfig.versionCode = code
-    //     releaseConfig.versionName = name
-    // }
-//     changeVersion(code, name)
-// } else {
+
+let code = 0
+if (manifest.versionCode instanceof Number) {
+    code = manifest.versionCode;
+} else {
+    code = parseInt(manifest.versionCode);
+}
+let versionName = manifest.versionName
+console.log("current code: " + code, "name: " + versionName)
 if (config.isIncrementVersion) {
-    let code = 0
-    if (manifest.versionCode instanceof Number) {
-        code = manifest.versionCode + 1;
-    } else {
-        code = parseInt(manifest.versionCode) + 1;
-    }
-    let name = incrementVersion(manifest.versionName)
-    console.log("code: " + code, "name: " + name)
-    changeVersion(code, name)
+    code = code + 1
+    versionName = incrementVersion(versionName)
+    console.log("new code: " + code, "name: " + versionName)
+    changeVersion(code, versionName)
 }
 
-// }
+
 
 function changeVersion(code, name) {
     // 更新版本号
@@ -110,11 +99,11 @@ commands.forEach((c) => {
         wgtInfos.push({targetPath, wgtOutFile})
     }
 })
-console.log("======资源包开始压缩=====")
+console.log("======资源包打包开始=====")
 Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
     .then((r) => {
         console.log(...r)
-        console.log("======资源包压缩任务完成=====")
+        console.log("======资源包打包完成=====")
         if (config.uploadWgtPackage) {
             let files = r.map(v => v.value)
             uploader.uploadFiles(...files).finally(() => {
@@ -130,7 +119,7 @@ Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
             }
         }
     }).catch((error) => {
-        console.error("资源包压缩任务异常", error)
+        console.error("资源包打包异常", error)
     })
 
 function generateWgt(target = {targetPath: "", wgtOutFile: ""}) {

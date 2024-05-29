@@ -7,14 +7,15 @@ const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath,m
 
 
 const config = require(configFilePath)
+const {syncServer} = require("./server-mgr");
 
 class Uploader {
 
-    #isRelease =  false
-
     upload(filePath) {
-        this.#isRelease =  filePath.includes("release")
-        if (this.#isRelease && !fs.existsSync(configReleaseFilePath)){
+        const isRelease =  filePath.includes("release")
+        const isBeta =  filePath.includes("beta")
+        const isDev =  filePath.includes("dev")
+        if (isRelease && !fs.existsSync(configReleaseFilePath)){
             return
         }
         let bucket = config.upload.devBucket
@@ -23,7 +24,7 @@ class Uploader {
         let domain = config.upload.devDomainName
         let dir = config.upload.devDir
 
-        if (this.#isRelease) {
+        if (isRelease) {
             const releaseConfig = require(configReleaseFilePath)
             bucket = releaseConfig.upload.bucket
             accessKey = releaseConfig.upload.accessKey
@@ -45,7 +46,7 @@ class Uploader {
         const formUploader = new qiniu.form_up.FormUploader(configQi)
         const putExtra = new qiniu.form_up.PutExtra()
 
-        return formUploader.putFile(uploadToken, fileName, localFile, putExtra, function (respErr, respBody, respInfo) {
+        return formUploader.putFile(uploadToken, fileName, localFile, putExtra, async function (respErr, respBody, respInfo) {
             if (respErr) {
                 console.log("========上传失败========")
                 console.error(respErr)
@@ -57,6 +58,10 @@ class Uploader {
                 const bucketManager = new qiniu.rs.BucketManager(mac, configQi)
                 const publicDownloadUrl = bucketManager.publicDownloadUrl(domain, fileName)
                 console.log("前往刷新url: ", publicDownloadUrl)
+                if (isDev) await syncServer({url: publicDownloadUrl, dev: true})
+                if (isBeta) await syncServer({url: publicDownloadUrl, beta: true})
+                if (isRelease) await syncServer({url: publicDownloadUrl, release: true})
+
             } else {
                 console.log("========上传失败========")
                 console.log(respInfo.statusCode);
