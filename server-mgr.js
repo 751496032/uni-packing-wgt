@@ -215,10 +215,11 @@ async function updateConfig(params = {
         envInfo()
         return
     }
-    let data = JSON.parse(res.data)
-    if (!data){
-        console.log("========== 配置数据不存在 ==========")
-        return
+    let data = {}
+    try {
+         data = JSON.parse(res.data) ?? {}
+    }catch (e) {
+
     }
     // 查找对应的内容  插入新配置或替换
     let version = params.versionName
@@ -233,6 +234,7 @@ async function updateConfig(params = {
     if (item){
         // 修改
         item.desc = description
+        item.updateTime = new Date().toLocaleString()
         if (api.configs.android){
             item.android = {
                 version: version,
@@ -263,9 +265,9 @@ async function updateConfig(params = {
             url: url
         }
         newItem.ios = newItem.android
+        newItem.updateTime = new Date().toLocaleString()
         data?.uniModuleArray?.push(newItem)
     }
-
     // 更新
     const updateParam = {
         option_key: key, data: JSON.stringify(data,null,2)
@@ -285,8 +287,10 @@ async function updateConfig(params = {
 }
 
 async function loginPlatform() {
+    let username = atob(api.username)
+    let password = atob(api.password)
     const loginParam = {
-        username: api.username, password: api.password
+        username, password
     }
     return await axios.post(api.login, loginParam,{ baseURL: api.baseUrl})
 }
