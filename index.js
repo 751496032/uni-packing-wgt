@@ -51,7 +51,6 @@ function changeVersion(code, name) {
         const data = fs.readFileSync(filePath, "utf8")
         const modifiedData = data.replace(/versionName: '(.+?)'/, `versionName: '${name}'`).replace(/versionCode: '(\d+)'/, `versionCode: '${code}'`);
         fs.writeFileSync(filePath, modifiedData, "utf8")
-        return
     }
 
     manifest.versionCode = code.toString()
@@ -70,7 +69,7 @@ function changeVersion(code, name) {
 
 let err = false
 const command = commands.join('\n')
-console.log("======开始生成资源包=====")
+console.log("====== 开始生成资源包 =====")
 try {
     execSync(command, {encoding: 'utf-8'})
 } catch (e) {
@@ -78,7 +77,7 @@ try {
     console.error("资源包生成异常", e)
 }
 if (err) return
-console.log("======资源包生成完成=====")
+console.log("====== 资源包生成完成 =====")
 
 // wgt压缩打包
 let wgtInfos = []
@@ -99,25 +98,25 @@ commands.forEach((c) => {
         wgtInfos.push({targetPath, wgtOutFile})
     }
 })
-console.log("======资源包打包开始=====")
+console.log("====== 资源包打包开始 =====")
 Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
     .then((r) => {
         console.log(...r)
-        console.log("======资源包打包完成=====")
+        console.log("====== 资源包打包完成 =====")
         if (config.uploadWgtPackage) {
             let files = r.map(v => v.value)
             uploader.uploadFiles(...files).finally(() => {
-                console.log("======资源包上传完成=====")
+                console.log("====== 资源包上传完成 =====")
             })
         }
         if (config.pkgCopyToNativeDir && fs.existsSync(configOutputFilePath)) {
-            console.log("======资源包开始复制=====")
+            console.log("====== 资源包开始复制 =====")
             const output = require(configOutputFilePath)
             if (output.sourceDir && output.targetDir && output.sourceDir.length > 0 && output.targetDir.length > 0 && fs.existsSync(output.sourceDir)) {
                 copyDirectory.copy(output.sourceDir, output.targetDir)
-                console.log("======资源包复制任务完成=====")
+                console.log("====== 资源包复制任务完成 =====")
             }else {
-                console.log("======检查输出输入路径是否配置=====")
+                console.log("====== 检查输出输入路径是否配置 =====")
             }
         }
     }).catch((error) => {
