@@ -3,19 +3,20 @@ const path = require('path')
 const fs = require("fs")
 
 
-const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath,manifestPath} = require("./file-mgr")
+const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath} = require("./file-mgr")
 
 
 const config = require(configFilePath)
-const {syncServer} = require("./server-mgr");
+const {syncServer, checkYiConfigExist} = require("./server-mgr");
+const {isEmptyMulti} = require("./utils");
 
 class Uploader {
 
     upload(filePath) {
-        const isRelease =  filePath.includes("release")
-        const isBeta =  filePath.includes("beta")
-        const isDev =  filePath.includes("dev")
-        if (isRelease && !fs.existsSync(configReleaseFilePath)){
+        const isRelease = filePath.includes("release")
+        const isBeta = filePath.includes("beta")
+        const isDev = filePath.includes("dev")
+        if (isRelease && !fs.existsSync(configReleaseFilePath)) {
             return
         }
         let bucket = config.upload.devBucket
@@ -32,11 +33,21 @@ class Uploader {
             domain = releaseConfig.upload.domainName
             dir = releaseConfig.upload.dir
         }
-        // const fileName = this.#getFileName(filePath)
-        const fileName = filePath.replace("./dist", dir)
-        const mac = new qiniu.auth.digest.Mac(accessKey, secretKey)
+        if (isEmptyMulti(bucket, accessKey, secretKey, domain, dir)) {
+            console.error("检查是否配置七牛相关参数")
+            return
+        }
+        // 测试情况使用getFileName作为key
+
+        let key = `${dir}/${Date.now()}`
+        if (filePath?.includes("./dist")) {
+            key = filePath.replace("./dist", dir)
+        } else {
+            key = `${dir}/${this.#getFileName(filePath)}`
+        }
+        let mac = new qiniu.auth.digest.Mac(accessKey, secretKey)
         const options = {
-            scope: bucket + ":" + fileName
+            scope: bucket + ":" + key
         }
         const putPolicy = new qiniu.rs.PutPolicy(options)
 
@@ -45,8 +56,8 @@ class Uploader {
         const localFile = filePath
         const formUploader = new qiniu.form_up.FormUploader(configQi)
         const putExtra = new qiniu.form_up.PutExtra()
-
-        return formUploader.putFile(uploadToken, fileName, localFile, putExtra, async function (respErr, respBody, respInfo) {
+        const target = this
+        return formUploader.putFile(uploadToken, key, localFile, putExtra, async function (respErr, respBody, respInfo) {
             if (respErr) {
                 console.log("========上传失败========")
                 console.error(respErr)
@@ -56,11 +67,18 @@ class Uploader {
             if (respInfo.statusCode === 200) {
                 console.log(respBody);
                 const bucketManager = new qiniu.rs.BucketManager(mac, configQi)
-                const publicDownloadUrl = bucketManager.publicDownloadUrl(domain, fileName)
+                const publicDownloadUrl = bucketManager.publicDownloadUrl(domain, key)
                 console.log("前往刷新url: ", publicDownloadUrl)
-                if (isDev) await syncServer({url: publicDownloadUrl, dev: true})
-                if (isBeta) await syncServer({url: publicDownloadUrl, beta: true})
-                if (isRelease) await syncServer({url: publicDownloadUrl, release: true})
+                if (checkYiConfigExist()) {
+                    if (isDev) await syncServer({url: publicDownloadUrl, dev: true})
+                    if (isBeta) await syncServer({url: publicDownloadUrl, beta: true})
+                    if (isRelease) await syncServer({url: publicDownloadUrl, release: true})
+                } else {
+                    // 七牛sdk cdn
+                    if (config.refreshUrl)
+                        target.refreshCdn(accessKey, secretKey, publicDownloadUrl)
+                }
+
 
             } else {
                 console.log("========上传失败========")
@@ -69,6 +87,27 @@ class Uploader {
             }
         })
 
+    }
+
+    refreshCdn(accessKey, secretKey, publicDownloadUrl) {
+        let mac2 = new qiniu.auth.digest.Mac(accessKey, secretKey)
+        let cdnManager = new qiniu.cdn.CdnManager(mac2);
+        //URL 列表
+        let urlsToRefresh = [publicDownloadUrl];
+        //刷新链接，单次请求链接不可以超过100个，如果超过，请分批发送请求
+        cdnManager.refreshUrls(urlsToRefresh, function (err, respBody, respInfo) {
+            console.log("")
+            console.log("=========== 缓存刷新结果 =============")
+            if (err) {
+                console.error(err)
+                return
+            }
+
+            console.log(respInfo.statusCode);
+            if (respInfo.statusCode === 200) {
+                console.log(JSON.stringify(respBody, null, 2))
+            }
+        });
     }
 
     uploadFiles(...filePaths) {

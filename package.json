@@ -24,7 +24,7 @@
   "bugs": {
     "url": "https://github.com/751496032/uni-packing-wgt/issues"
   },
-  "homepage": "https://github.com/751496032/uni-packing-wgt#readme",
+  "homepage": "https://github.com/751496032/uni-packing-wgt",
   "dependencies": {
     "axios": "^1.7.2",
     "compressing": "^1.10.0",

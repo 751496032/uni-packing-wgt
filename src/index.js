@@ -12,6 +12,8 @@ const manifest = require(manifestPath)
 const config = require(configFilePath)
 const uploader = require("./upload-tools")
 const copyDirectory = require("./copy-directory")
+const {checkYiConfigExist, getConfigVersionInfo} = require("./server-mgr");
+const {isEmpty} = require("./utils");
 
 const appid = manifest.appid
 
@@ -26,20 +28,99 @@ if (commands.length === 0){
     console.error("no command")
     return
 }
-
-let code = 0
-if (manifest.versionCode instanceof Number) {
-    code = manifest.versionCode;
-} else {
-    code = parseInt(manifest.versionCode);
+if (checkYiConfigExist()) {
+    // 定制业务
+    if (commands.length > 1) {
+        console.log("====== 不支持多环境同时执行 ========")
+        return
+    }
+    getConfigVersionInfo().then((r) => {
+        execute(r)
+    })
+}else {
+    // 常规
+    execute()
 }
-let versionName = manifest.versionName
-console.log("current code: " + code, "name: " + versionName)
-if (config.isIncrementVersion) {
-    code = code + 1
-    versionName = incrementVersion(versionName)
-    console.log("new code: " + code, "name: " + versionName)
-    changeVersion(code, versionName)
+
+function execute(version) {
+
+    let code = 0
+    if (manifest.versionCode instanceof Number) {
+        code = manifest.versionCode;
+    } else {
+        code = parseInt(manifest.versionCode);
+    }
+    let versionName = manifest.versionName
+    console.log("manifest code: " + code, "name: " + versionName)
+
+    if (version && !isEmpty(version.versionName) && version.versionCode > 0){
+        code = version.versionCode
+        versionName = version.versionName
+    }
+    if (config.isIncrementVersion) {
+        code = code + 1
+        versionName = incrementVersion(versionName)
+        console.log("new code: " + code, "name: " + versionName)
+        changeVersion(code, versionName)
+    }
+
+
+    let err = false
+    const command = commands.join('\n')
+    console.log("====== 开始生成资源包 =====")
+    try {
+        execSync(command, {encoding: 'utf-8'})
+    } catch (e) {
+        err = true
+        console.error("资源包生成异常", e)
+    }
+    if (err) return
+    console.log("====== 资源包生成完成 =====")
+
+// wgt压缩打包
+    let wgtInfos = []
+    commands.forEach((c) => {
+        let targetPath = ''
+        let wgtOutFile = ''
+        if (c.includes("dev")) {
+            targetPath = "./dist/dev/app/"
+            wgtOutFile = `./dist/dev/${appid}.wgt`
+        }else if (c.includes("beta")){
+            targetPath = "./dist/beta/app/"
+            wgtOutFile = `./dist/beta/${appid}.wgt`
+        }else if (c.includes("release")){
+            targetPath = "./dist/release/app/"
+            wgtOutFile = `./dist/release/${appid}.wgt`
+        }
+        if (!!targetPath && !!wgtOutFile){
+            wgtInfos.push({targetPath, wgtOutFile})
+        }
+    })
+    console.log("====== 资源包打包开始 =====")
+    Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
+        .then((r) => {
+            console.log(...r)
+            console.log("====== 资源包打包完成 =====")
+            if (config.uploadWgtPackage) {
+                let files = r.map(v => v.value)
+                uploader.uploadFiles(...files).finally(() => {
+                    console.log("====== 资源包上传完成 =====")
+                })
+            }
+            if (config.pkgCopyToNativeDir && fs.existsSync(configOutputFilePath)) {
+                console.log("====== 资源包开始复制 =====")
+                const output = require(configOutputFilePath)
+                if (output.sourceDir && output.targetDir && output.sourceDir.length > 0 && output.targetDir.length > 0 && fs.existsSync(output.sourceDir)) {
+                    copyDirectory.copy(output.sourceDir, output.targetDir)
+                    console.log("====== 资源包复制任务完成 =====")
+                }else {
+                    console.log("====== 检查输出输入路径是否配置 =====")
+                }
+            }
+        }).catch((error) => {
+        console.error("资源包打包异常", error)
+    })
+
 }
 
 
@@ -66,62 +147,6 @@ function changeVersion(code, name) {
 
 }
 
-
-let err = false
-const command = commands.join('\n')
-console.log("====== 开始生成资源包 =====")
-try {
-    execSync(command, {encoding: 'utf-8'})
-} catch (e) {
-    err = true
-    console.error("资源包生成异常", e)
-}
-if (err) return
-console.log("====== 资源包生成完成 =====")
-
-// wgt压缩打包
-let wgtInfos = []
-commands.forEach((c) => {
-    let targetPath = ''
-    let wgtOutFile = ''
-    if (c.includes("dev")) {
-        targetPath = "./dist/dev/app/"
-        wgtOutFile = `./dist/dev/${appid}.wgt`
-    }else if (c.includes("beta")){
-        targetPath = "./dist/beta/app/"
-        wgtOutFile = `./dist/beta/${appid}.wgt`
-    }else if (c.includes("release")){
-        targetPath = "./dist/release/app/"
-        wgtOutFile = `./dist/release/${appid}.wgt`
-    }
-    if (!!targetPath && !!wgtOutFile){
-        wgtInfos.push({targetPath, wgtOutFile})
-    }
-})
-console.log("====== 资源包打包开始 =====")
-Promise.allSettled(wgtInfos.map(item => generateWgt(item)))
-    .then((r) => {
-        console.log(...r)
-        console.log("====== 资源包打包完成 =====")
-        if (config.uploadWgtPackage) {
-            let files = r.map(v => v.value)
-            uploader.uploadFiles(...files).finally(() => {
-                console.log("====== 资源包上传完成 =====")
-            })
-        }
-        if (config.pkgCopyToNativeDir && fs.existsSync(configOutputFilePath)) {
-            console.log("====== 资源包开始复制 =====")
-            const output = require(configOutputFilePath)
-            if (output.sourceDir && output.targetDir && output.sourceDir.length > 0 && output.targetDir.length > 0 && fs.existsSync(output.sourceDir)) {
-                copyDirectory.copy(output.sourceDir, output.targetDir)
-                console.log("====== 资源包复制任务完成 =====")
-            }else {
-                console.log("====== 检查输出输入路径是否配置 =====")
-            }
-        }
-    }).catch((error) => {
-        console.error("资源包打包异常", error)
-    })
 
 function generateWgt(target = {targetPath: "", wgtOutFile: ""}) {
     const targetPath = target.targetPath

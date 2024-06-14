@@ -1,7 +1,7 @@
 /**
  * @author: HZWei
  * @date: 2024/5/22
- * @desc: 公司定制需求
+ * @desc: 公司定制需求，外部不需要
  */
 
 const {initConfig, configFilePath, configOutputFilePath, configReleaseFilePath, manifestPath} = require("./file-mgr")
@@ -29,9 +29,9 @@ const api = {
     configs: {
         key: configRelease.configs.key,
         token: configRelease.configs.token,
-        devBaseUrl: "https://cim-test-api.yidejia.com/",
-        betaBaseUrl: "https://cim-uat-api.yidejia.com/",
-        releaseBaseUrl: "https://cim-api.yidejia.com/",
+        devBaseUrl: configRelease.configs.devBaseUrl,
+        betaBaseUrl: configRelease.configs.betaBaseUrl,
+        releaseBaseUrl: configRelease.configs.releaseBaseUrl,
         devSign: "cpa4mqkuuf81l1qfgvqg",
         betaSign: "cpapae1jvotmrd3gcq30",
         releaseSign: "cpapaln18np8tarnts7g",
@@ -45,7 +45,8 @@ const api = {
         updateDesc: configRelease.configs.updateDesc,
         dev: false,
         beta: false,
-        release: false
+        release: false,
+        enable: configRelease.configs.enable
     }
 }
 api.configs?.baseUrlArray.push(api.configs.devBaseUrl)
@@ -54,6 +55,8 @@ api.configs?.baseUrlArray.push(api.configs.releaseBaseUrl)
 
 const fs = require("fs");
 const axios = require('axios');
+const os = require("os");
+const {isEmptyMulti} = require("./utils");
 axios.defaults.baseURL = api.baseUrl
 axios.interceptors.request.use((config) => {
     // console.log("enableServerLog: ",enableServerLog)
@@ -178,7 +181,7 @@ async function loginMall() {
     return data.token
 }
 
-async function getServerConfig(params = {
+async function getYiConfig(params = {
     dev: false, beta: false, release: false
 }) {
     let baseUrl = initEnvironment(params)
@@ -189,6 +192,7 @@ async function getServerConfig(params = {
         envInfo(baseUrl, params)
         return
     }
+    // console.log('getYiConfig: ',res)
     let data = {}
     try {
         data = JSON.parse(res.data) ?? {}
@@ -263,7 +267,8 @@ async function updateConfig(params = {
     // } catch (e) {
     //
     // }
-    let data = await getServerConfig(params)
+    const key = api.configs.key
+    let data = await getYiConfig(params)
     // 查找对应的内容  插入新配置或替换
     let version = params.versionName
     let code = params.versionCode
@@ -274,11 +279,13 @@ async function updateConfig(params = {
         }
     }
     let item = data?.uniModuleArray?.find((value) => value.appid === uniAppId)
+    let os = require('os')
+    let userName = os.userInfo().username || process.env.USER
     if (item) {
         // 修改
         item.desc = description
         item.updateTime = new Date().toLocaleString()
-        item.updateUser = process.env.USER
+        item.updateUser = userName
         if (api.configs.android) {
             item.android = {
                 version: version, code: Number.parseInt(code), updateDesc: api.configs.updateDesc, url: url
@@ -299,7 +306,7 @@ async function updateConfig(params = {
         }
         newItem.ios = newItem.android
         newItem.updateTime = new Date().toLocaleString()
-        newItem.updateUser = process.env.USER
+        newItem.updateUser = userName
         data?.uniModuleArray?.push(newItem)
     }
     // 更新
@@ -330,26 +337,36 @@ async function loginPlatform() {
 }
 
 async function refreshCdnCache(url) {
-    // axios.defaults.baseURL = configRelease.qiniu.baseUrl
+    console.log(`========== 缓存刷新中 ==========`)
+    console.log('......')
     const refreshParam = {
         urls: url, dirs: ""
     }
-    const max = 3
+    const max = 5
+    let success = false
     for (let i = 0; i < max; i++) {
         let res = await axios.post(api.cdn_cache_refresh, refreshParam, {baseURL: api.baseUrl})
         if (res) {
-            console.log(`========== 链接刷新完成 ==========`)
-            console.log(`${url}`)
+            console.log(`========== 刷新结果 ==========`)
+            console.log(res)
             console.log('')
-            break
+            if (res.toString().includes(url)){
+                success = true
+                break
+            } else if (i < max) {
+                console.log(`========== 尝试重刷中 ==========`)
+            }
+
         }
     }
-    let res = await axios.get(`${api.refresh_history}?operator_type=qiniu_refresh`, {baseURL: api.baseUrl})
     if (config.enableRefreshHistory) {
+        let res = await axios.get(`${api.refresh_history}?operator_type=qiniu_refresh`, {baseURL: api.baseUrl})
         console.log(`========== 刷新历史记录 ==========`)
         console.log(res)
         console.log('')
     }
+
+    return success
 
 
 }
@@ -358,7 +375,7 @@ async function syncServer(params = {
     url: '', dev: false, beta: false, release: false
 }) {
     if (!config.refreshUrl) return
-    if (!api.username || !api.password || !api.configs.username || !api.configs.password || !api.baseUrl || !api.configs.key) {
+    if (!checkYiConfigExist()) {
         console.log("========== 检查配置是否正常 ==========")
         return
     }
@@ -366,10 +383,47 @@ async function syncServer(params = {
     params.versionName = manifest.versionName
     params.versionCode = manifest.versionCode
     // 刷新cdn
-    await refreshCdnCache(params.url)
+    const success = await refreshCdnCache(params.url)
+    if (!success){
+        console.log("========== 缓存刷新失败，已终止后续流程 ==========")
+        console.log('')
+        return
+    }
     // 更新配置
     await updateConfig(params)
 }
 
-module.exports = {syncServer}
+
+/**
+ * 定制需求，外部不需要
+ * @returns {boolean}
+ */
+function checkYiConfigExist(){
+    return api.configs.enable &&  !isEmptyMulti(api.baseUrl, api.username, api.password, api.configs.username, api.configs.password, api.configs.key)
+}
+
+async function getConfigVersionInfo() {
+    if (api.configs.android && api.configs.ios){
+        throw new Error('为了确保版本的准确性，不支持android和ios两个平台同时更新')
+    }
+    let params = {dev: config.runDev, beta: config.runBeta, release: config.runRelease}
+    if ((params.dev && params.beta) || (params.dev && params.release)  || (params.beta && params.release) ){
+        throw new Error('不支持多环境同时执行')
+    }
+    let data = await getYiConfig(params)
+    let item = data?.uniModuleArray?.find((value) => value.appid === uniAppId)
+    let versionInfo = {versionName: '', versionCode: 0}
+    if (api.configs.android) {
+        versionInfo.versionCode = item.android.code
+        versionInfo.versionName = item.android.version
+    }
+    if (api.configs.ios) {
+        versionInfo.versionCode = item.ios.code
+        versionInfo.versionName = item.ios.version
+    }
+    console.log(`config code: ${versionInfo.versionCode}  name: ${versionInfo.versionName}`)
+    return versionInfo
+}
+
+module.exports = {syncServer, checkYiConfigExist, getConfigVersionInfo}
 

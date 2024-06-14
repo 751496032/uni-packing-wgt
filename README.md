@@ -9,7 +9,7 @@
 主要特性：
 
 - 支持同时构建多个环境资源(dev、beta、release)包，也包括了wgt包。
-- 支持上传发布到七牛云平台，其他云平台暂不支持，支持七牛刷新文件CDN缓存（暂对本公司服务有用）。
+- 支持上传发布到七牛云平台，其他云平台暂不支持，支持七牛文件CDN缓存刷新。
 - 在构建资源包时也可以同步内置到原生项目上，方便在开发阶段与原生间的交互调试。
 - 支持版本号自增，如果在原生项目上内置资源包调试，此时可用上，因为内置资源包调试版本号必须增加才会生效。
 
@@ -33,7 +33,7 @@ npm i uni-packing-wgt
 
 其中`development`、`beta`、`production`是vite多环境配置的文件名，vite必须遵守这种命名规范，不然脚本会执行失败。
 
-2、执行`build-wgt`命令生成wgt包
+2、执行`build-wgt`命令生成uniapp资源包和wgt包
 
 > 如果是在vscode和命令终端上运行命令，记得加上`npx`,即`npx build-wgt`, WebStorm则不用。
 
@@ -52,10 +52,11 @@ npm i uni-packing-wgt
   "runDev": true, // 指定打包的环境
   "runBeta": false,
   "runRelease": false,
+  "refreshUrl": true, // 是否刷新七牛cdn缓存 
   "isIncrementVersion": true, // 版本是否自增
   "uploadWgtPackage": false, // wgt包是否上传到云平台上，需要结合upload参数使用
   "pkgCopyToNativeDir": false, // 是否将资源包同步到原生项目上，需要在config-output.json配置路径
-  "upload": {
+  "upload": {  // 七牛配置参数
     "devAccessKey": "",
     "devSecretKey": "",
     "devBucket": "",
@@ -65,6 +66,22 @@ npm i uni-packing-wgt
 
 }
 ```
+
+生成环境的七牛参数需要在`config-release.json#upload`配置，如果是外部使用，其他参数无须配置。
+
+在打包资源同步到原生项目中调试，需要在`config-output.json`文件中配置原生项目的目标目录。以Android为例：
+
+> 同步到原生项目中调试，需要版本自增才会生效，把`isIncrementVersion`设置`true`即可。
+
+```json
+{
+  "sourceDir": "./dist/dev/app",
+  "targetDir": "替换成项目路径/app/src/main/assets/apps/替换成uniAppId/www"
+}
+```
+- sourceDir: 是uniapp的资源包的相对路径，默认是`./dist/dev/app`；
+- targetDir: 原生项目的路径，建议放绝对路径。
+
 
 以dev环境为例，控制台输出结果：
 
